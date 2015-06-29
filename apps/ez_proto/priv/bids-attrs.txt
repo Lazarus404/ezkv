@@ -1,0 +1,9 @@
+1	username	value
+2	password	value
+3	realm	value
+4	nonce	value
+5	bucket	value
+6	key	value
+7	data	value
+8	data_type	value
+9	error	coded_value

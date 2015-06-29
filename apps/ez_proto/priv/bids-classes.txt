@@ -1,0 +1,3 @@
+0	request
+1	success
+2	error
