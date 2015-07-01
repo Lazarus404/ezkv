@@ -4,7 +4,7 @@ defprotocol EZ.Proto.PktProto do
 end
 
 defmodule EZ.Proto.Pkt do
-  alias EZ.Proto.RESP
+  alias EZ.Proto.RESP.Pkt, as: RESP
   alias EZ.Proto.BiDS.Pkt, as: BiDS
 
   def from_wire(<<3::2, _::6, _::24, 0x56E44E21::32, _::binary>> = pkt), do: BiDS.new(pkt)

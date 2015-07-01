@@ -35,15 +35,15 @@ defmodule EZ.Proto.BiDS.Pkt do
     end
   end
 
-  def process(pkt) do
-    {:ok, %BiDS{attrs: attrs, method: cmd} = req} = BiDS.decode(pkt)
+  defp process(pkt) do
+    {:ok, %BiDS{class: :request, attrs: attrs, method: cmd} = req} = BiDS.decode(pkt)
       data = Dict.get(attrs, :data, nil)
       key = Dict.get(attrs, :key, "")
       decoded = case Dict.get(attrs, :data_type) do
         "json" -> json(key, data)
         "string" -> string(key, data)
         "int" -> int(key, data)
-        _ -> data
+        _ -> key
       end
       bucket = Dict.get(attrs, :bucket, "0")
       %EZ.Proto.BiDS.Pkt{cmd: cmd, data: decoded, bucket: bucket, request: req}
@@ -52,45 +52,58 @@ defmodule EZ.Proto.BiDS.Pkt do
   defp json(k, v) do
     case v do
       nil -> k
-      d -> [k, Poison.decode!(d)]
+      d -> [k, {:json, Poison.decode!(d)}]
     end
   end
 
   defp int(k, v) do
     case v do
       nil -> k
-      d -> [k, String.to_integer(d)]
+      d -> [k, {:int, String.to_integer(d)}]
     end
   end
 
   defp string(k, v) do
     case v do
       nil -> k
-      d -> [k, d]
+      d -> [k, {:string, d}]
     end
   end
 end
 
 defimpl EZ.Proto.PktProto, for: EZ.Proto.BiDS.Pkt do
+  alias EZ.Proto.BiDS.Client
   def encode(%EZ.Proto.BiDS.Pkt{} = pkt), do: EZ.BiDS.encode(pkt)
   def encode(%EZ.Proto.BiDS.Pkt{} = pkt, :error, str) when is_binary(str) do
-    EZ.BiDS.set_error(pkt.request, 100, str)
+    Client.error(pkt.request, 100, str)
     |> EZ.BiDS.encode
   end
   def encode(%EZ.Proto.BiDS.Pkt{} = pkt, :error, str) when is_atom(str) do
-    EZ.BiDS.set_error(pkt.request, 100, to_string(str))
+    Client.error(pkt.request, 100, to_string(str))
     |> EZ.BiDS.encode
   end
   def encode(%EZ.Proto.BiDS.Pkt{} = pkt, :ok, val) when is_integer(val) do
-    EZ.BiDS.set_response(pkt.request, "int", val)
+    Client.success(pkt.request, "int", "#{val}")
     |> EZ.BiDS.encode
   end
   def encode(%EZ.Proto.BiDS.Pkt{} = pkt, :ok, val) when is_binary(val) do
-    EZ.BiDS.set_response(pkt.request, "string", val)
+    Client.success(pkt.request, "string", val)
+    |> EZ.BiDS.encode
+  end
+  def encode(%EZ.Proto.BiDS.Pkt{} = pkt, :ok, {type, val}) do
+    case type do
+      :int -> Client.success(pkt.request, "int", "#{val}")
+      :string -> Client.success(pkt.request, "string", val)
+      :json -> Client.success(pkt.request, "json", Poison.encode!(val))
+      _ -> Client.error(pkt.request, 100, "unknown type")
+    end
     |> EZ.BiDS.encode
   end
   def encode(%EZ.Proto.BiDS.Pkt{} = pkt, :ok, val) do
-    EZ.BiDS.set_response(pkt.request, "json", Poison.encode!(val))
+    case val do
+      nil -> Client.success(pkt.request)
+      _ -> Client.success(pkt.request, "json", Poison.encode!(val))
+    end
     |> EZ.BiDS.encode
   end
   

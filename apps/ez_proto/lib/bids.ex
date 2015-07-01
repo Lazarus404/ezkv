@@ -94,52 +94,6 @@ defmodule EZ.BiDS do #Binary delivery stream
     end
   end
 
-  @doc """
-  returns a 12 byte transaction id value
-  """
-  def gen_trans_id do
-    <<b::96>> = :crypto.strong_rand_bytes(12)
-    b
-  end
-
-  @doc """
-  creates a packet object for encoding
-  """
-  def make_pkt(class, method, attrs \\ [], key \\ nil) do
-    %EZ.BiDS{
-      attrs: attrs, 
-      class: class,
-      fingerprint: (key != nil), 
-      integrity: (key != nil),
-      key: key,
-      method: method, 
-      transactionid: gen_trans_id
-    }
-  end
-
-  @doc """
-  converts a bids map value to an error and 
-  appends an error attribute tuple
-  """
-  def set_error(%EZ.BiDS{} = pkt, code, reason) when is_integer(code) and is_binary(reason) do
-    attrs = Map.get(pkt, :attrs, [])
-    |> Keyword.put(:error, {code, reason})
-    Map.put(pkt, :attrs, attrs)
-    |> Map.put(:class, :error)
-  end
-
-  @doc """
-  converts a bids map value to a response and 
-  updates its data attribute to the passed value
-  """
-  def set_response(%EZ.BiDS{} = pkt, type, value) do
-    attrs = Map.get(pkt, :attrs, [])
-    |> Keyword.put(:data, value)
-    |> Keyword.put(:data_type, type)
-    Map.put(pkt, :attrs, attrs)
-    |> Map.put(:class, :success)
-  end
-
   # -------------------------------------------------------------------------------
   # Start code generation
   # -------------------------------------------------------------------------------
