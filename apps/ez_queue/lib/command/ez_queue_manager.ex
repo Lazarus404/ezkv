@@ -13,11 +13,15 @@ defmodule EZ.Queue.Manager do
   end
 
   def execute(pkt, db \\ nil) do
-    case GenServer.call(EZ.Queue.Manager, {pkt.cmd, pkt.data, pkt.bucket || db}) do
+    case do_execute(pkt.cmd, pkt.data, pkt.bucket || db) do
       {:bucket_change, value} -> {:ok, :bucket_change, Pkt.encode(pkt, :ok, nil)}
       {status, value} -> {:ok, Pkt.encode(pkt, status, value)}
       :ok -> {:ok, Pkt.encode(pkt, :ok, nil)}
     end
+  end
+
+  def do_execute(cmd, data, bucket) do
+    GenServer.call(EZ.Queue.Manager, {cmd, data, bucket})
   end
 
   #########################################################################################################################
@@ -51,6 +55,7 @@ defmodule EZ.Queue.Manager do
       true ->
         :ok
       _ ->
+        Logger.info "#{cmd}, #{db}, #{inspect state}"
         GenServer.call(self, {:select, db, nil})
     end
     {:reply, GenServer.call(Dict.get(state, db), {cmd, value}), state}

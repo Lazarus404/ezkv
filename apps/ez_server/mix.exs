@@ -13,11 +13,12 @@ defmodule EZServer.Mixfile do
   end
 
   def application do
-    [applications: [:logger],
+    [applications: [:logger, :ewebmachine],
      mod: {EZServer, []}]
   end
 
   defp deps do
-    [{:ez_queue, in_umbrella: true}] #{:httpoison, "~> 0.6"}
+    [{:ez_queue, in_umbrella: true},
+     {:ewebmachine, github: "xirdev/ewebmachine"}]
   end
 end

@@ -6,7 +6,8 @@ defmodule EZServer do
 
     children = [
       supervisor(EZ.Transport.Supervisor, [[]]),
-      supervisor(EZ.Queue, [[]])
+      supervisor(EZ.Queue, [[]]),
+      supervisor(EZ.REST.Supervisor, [])
     ]
 
     opts = [strategy: :one_for_one, name: EZServer.Supervisor]
