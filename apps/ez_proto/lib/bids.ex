@@ -52,12 +52,9 @@ defmodule EZ.BiDS do #Binary delivery stream
   Accepts data and attempts to convert it to a BiDS specific
   stream as a response to the calling client.
   ## Example
-        iex> response = %BiDS{class: :success, method: :binding, 
+        iex> response = %BiDS{class: :request, method: :set, 
         ...> transactionid: 123456789012, fingerprint: false, attrs: [
-        ...>   {:"XOR-MAPPED-ADDRESS", {{127,0,0,1}, 12345}},
-        ...>   {:"MAPPED-ADDRESS", {{127,0,0,1}, 12345}},
-        ...>   {:"SOURCE-ADDRESS", {{127,0,0,1}, 12346}},
-        ...>   {:"SOFTWARE", <<"xirsys-BiDS">>}
+        ...>   {:data, "bar"}
         ...> ]}
         iex> EZ.BiDS.encode(response)
         <<1, 1, 0, 52, 33, 18, 164, 66, 0, 0, 0, 0, 0, 0, 0, 28, 190, 153, 
@@ -166,7 +163,7 @@ defmodule EZ.BiDS do #Binary delivery stream
     attrs
   end
   def decode_attrs(<<>>, length, _, attrs) do
-    Logger.info "BiDS TLV wrong length #{length}"
+    Logger.info "FIXME: BiDS TLV wrong length #{length}"
     attrs
   end
   def decode_attrs(<<type::size(16), item_length::size(32), bin::binary>>, length, tid, attrs) do
@@ -256,30 +253,6 @@ defmodule EZ.BiDS do #Binary delivery stream
 
   Must be called AFTER check_fingerprint
   """
-  # def check_integrity(bids_binary, nil) do
-  #   {false, bids_binary}
-  # end
-  # def check_integrity(bids_binary, key) do
-  #   s = byte_size(bids_binary) - 24
-  #   case bids_binary do
-  #     <<message::[binary, size(s)], 0x00::size(8), 0x08::size(8), 0x00::size(8), 0x14::size(8), fingerprint::[binary, size(20)]>> ->
-  #       try do
-  #         ^fingerprint = :crypto.hmac(:sha, key, message)
-  #         <<h::size(16), old_size::size(16), payload::binary>> = message
-  #         new_size = old_size - 24
-  #         {true, <<h::size(16), new_size::size(16), payload::binary>>}
-  #       rescue
-  #          _ ->
-  #            Logger.error "MESSAGE-INTEGRITY invalid in BiDS message."
-  #            raise IntegrityError, message: "Integrity check failed"
-  #       end
-  #     _ ->
-  #       Logger.error "No MESSAGE-INTEGRITY was found in BiDS message."
-  #       {false, bids_binary}
-  #   end
-  # end
-
-  # mock check of integrity
   def check_integrity(bids_binary) do
     s = byte_size(bids_binary) - 24
     case bids_binary do
@@ -290,18 +263,18 @@ defmodule EZ.BiDS do #Binary delivery stream
           {true, <<h::size(16), new_size::size(16), payload::binary>>}
         rescue
            _ ->
-             Logger.info "MESSAGE-INTEGRITY invalid in BiDS message."
+             Logger.info ":integrity invalid in BiDS message."
              raise IntegrityError, message: "Integrity check failed"
         end
       _ ->
-        Logger.info "No MESSAGE-INTEGRITY was found in BiDS message."
+        Logger.info "No :integrity was found in BiDS message."
         {false, bids_binary}
     end
   end
 
   # full check of integrity
   def check_integrity(bids_binary, nil) do
-    Logger.info "Nil MESSAGE-INTEGRITY was found in BiDS message."
+    Logger.info "Nil :integrity was found in BiDS message."
     {false, bids_binary}
   end
   def check_integrity(bids_binary, key) do
@@ -315,11 +288,11 @@ defmodule EZ.BiDS do #Binary delivery stream
           {true, <<h::size(16), new_size::size(16), payload::binary>>}
         rescue
            _ ->
-             Logger.info "MESSAGE-INTEGRITY invalid in BiDS message."
+             Logger.info ":integrity invalid in BiDS message."
              raise IntegrityError, message: "Integrity check failed"
         end
       _ ->
-        Logger.info "No MESSAGE-INTEGRITY was found in BiDS message."
+        Logger.info "No :integrity was found in BiDS message."
         {false, bids_binary}
     end
   end
@@ -330,20 +303,13 @@ defmodule EZ.BiDS do #Binary delivery stream
   def insert_integrity(bids_binary, nil) do
     bids_binary
   end
-  # def insert_integrity(bids_binary, key) do
-  #   <<h::size(16), _::size(16), message::binary>> = bids_binary
-  #   s = byte_size(bids_binary) + 24 - 20
-  #   fingerprint = :crypto.hmac(:sha, key, <<h::size(16), s::size(16), message::binary>>)
-  #   <<h::size(16), s::size(16), message::binary, 0x00::size(8), 0x08::size(8), 0x00::size(8), 0x14::size(8), fingerprint::binary>>
-  # end
 
   def insert_integrity(bids_binary, key) do
-    Logger.info "INSERTING INTEGRITY WITH KEY #{inspect key}"
+    Logger.info "INSERTING :integrity WITH KEY #{inspect key}"
     <<0::2, type::14, len::16, magic::32, trid::96, attrs::binary>> = bids_binary
     nlen = len + 4 + 20 ## 24 is the length of Message-Integrity attribute
     value = <<0::2, type::14, nlen::16, magic::32, trid::96, attrs::binary>>
     integrity = hmac_sha1(value, key)
-    # integrity = enc_attr(?BiDS_ATTR_MESSAGE_INTEGRITY, hash)
     <<0::2, type::14, nlen::16, magic::32, trid::96, attrs::binary, 0x00::size(8), 0x08::size(8), 0x00::size(8), 0x14::size(8), integrity::binary-size(20)>>
   end
 

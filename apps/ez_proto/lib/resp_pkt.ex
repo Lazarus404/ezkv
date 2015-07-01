@@ -1,9 +1,15 @@
 defmodule EZ.Proto.RESP.Pkt do
+  @moduledoc """
+  Polymorphosed pkt handler for Redis RESP format
+  """
   alias EZ.Proto.RESP.Pkt, as: Proto
   require Logger
 
   defstruct cmd: nil, data: nil, bucket: nil
 
+  @doc """
+  create RESP map structure from RESP string
+  """
   def new(pkt) do
     case Proto.process(pkt) do
       {:ok, [cmd|[data]], buf} ->
@@ -20,6 +26,10 @@ defmodule EZ.Proto.RESP.Pkt do
     end
   end
 
+  @doc """
+  Here, process supports the full RESP format, but we don't
+  support the arrays in the Queue app, since we support JSON.
+  """
   def process(<<"+", data::binary>> = pkt) do
     case nibble(data, 2) do
       ^data -> {:error, pkt}
@@ -80,6 +90,9 @@ defmodule EZ.Proto.RESP.Pkt do
 end
 
 defimpl EZ.Proto.PktProto, for: EZ.Proto.RESP.Pkt do
+  @moduledoc """
+  Polymorphed functions interface for outgoing packet encoding
+  """
   @nl "\r\n"
   def encode(_), do: <<"+OK", @nl::binary>>
   def encode(pkt, type, val \\ nil)
@@ -93,11 +106,4 @@ defimpl EZ.Proto.PktProto, for: EZ.Proto.RESP.Pkt do
   end
   def encode(_, :error, nil), do: <<"$-1", @nl::binary>>
   def encode(_, :error, str) when is_binary(str), do: <<"-#{str}", @nl::binary>>
-
-  # def encode(_, :ok, str) when is_binary(str), do: <<"+", str::binary, @nl::binary>>
-  # def encode(_, :simple, str) when is_binary(str), do: <<"+", str::binary, @nl::binary>>
-  # def encode(_, :int, int) when is_integer(int), do: <<":#{int}", @nl::binary>>
-  # def encode(_, :error, str) when is_binary(str), do: <<"-#{str}", @nl::binary>>
-  # def encode(_, :bulk, nil), do: <<"$-1", @nl::binary>>
-  # def encode(_, :bulk, str) when is_binary(str), do: <<"$#{byte_size(str)}", @nl::binary, str::binary, @nl::binary>>
 end

@@ -1,4 +1,7 @@
 defmodule EZ.REST.Index.Impl do
+  @moduledoc """
+  implementation for RESTful interface
+  """
   require Logger
   import EZ.REST.Utils
   alias EZ.Queue.Manager, as: Queue

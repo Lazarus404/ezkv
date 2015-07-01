@@ -1,4 +1,7 @@
 defmodule EZ.Queue.Client do
+  @moduledoc """
+  Bucket process, identifiable by name
+  """
   use GenServer
   require Logger
 

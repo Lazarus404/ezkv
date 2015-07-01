@@ -1,9 +1,16 @@
 defmodule EZ.Proto.BiDS.Pkt do
+  @moduledoc """
+  Polymorphosed pkt handler for BiDS binary format
+  """
   require Logger
   alias EZ.BiDS, as: BiDS
 
   defstruct cmd: nil, data: nil, bucket: nil, request: nil
 
+  @doc """
+  While we nibble off a new packet, we need to ensure we return an unharmed
+  remainder to fill the incoming buffer.
+  """
   def new(pkt) when is_binary(pkt) do
     bin_bytes = byte_size(pkt)
     cond do
@@ -35,6 +42,9 @@ defmodule EZ.Proto.BiDS.Pkt do
     end
   end
 
+  @doc """
+  process a complete BiDS packet to map structure (see defstruct above)
+  """
   defp process(pkt) do
     {:ok, %BiDS{class: :request, attrs: attrs, method: cmd} = req} = BiDS.decode(pkt)
       data = Dict.get(attrs, :data, nil)
@@ -71,6 +81,9 @@ defmodule EZ.Proto.BiDS.Pkt do
   end
 end
 
+@doc """
+polymorph functions for outgoing packet encoding
+"""
 defimpl EZ.Proto.PktProto, for: EZ.Proto.BiDS.Pkt do
   alias EZ.Proto.BiDS.Client
   def encode(%EZ.Proto.BiDS.Pkt{} = pkt), do: EZ.BiDS.encode(pkt)
@@ -106,12 +119,4 @@ defimpl EZ.Proto.PktProto, for: EZ.Proto.BiDS.Pkt do
     end
     |> EZ.BiDS.encode
   end
-  
-  # def encode(_, :ok, nil), do: <<"+OK", @nl::binary>>
-  # def encode(_, :ok, str) when is_binary(str), do: <<"+", str::binary, @nl::binary>>
-  # def encode(_, :simple, str) when is_binary(str), do: <<"+", str::binary, @nl::binary>>
-  # def encode(_, :int, int) when is_integer(int), do: <<":#{int}", @nl::binary>>
-  # def encode(_, :error, str) when is_binary(str), do: <<"-#{str}", @nl::binary>>
-  # def encode(_, :bulk, nil), do: <<"$-1", @nl::binary>>
-  # def encode(_, :bulk, str) when is_binary(str), do: <<"$#{byte_size(str)}", @nl::binary, str::binary, @nl::binary>>
 end
